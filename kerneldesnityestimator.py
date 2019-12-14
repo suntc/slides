@@ -61,7 +61,7 @@ def class_sorted_data(dataset):
     return sortedclassdata, classes
 
 
-def kerndensitymodel_vector(dataset, classes, h, x):
+def kerndensitymodel_vector_time_measurement(x, dataset, classes, h):
     ## dataset should be M X N
     start = timer() ## measure time
 
@@ -84,6 +84,22 @@ def kerndensitymodel_vector(dataset, classes, h, x):
     classPrediction = classes[np.argmax(probs)]
     return classPrediction
 
+
+def kerndensitymodel_vector(x, dataset, classes, h):
+    ## dataset should be M X N
+    probs = np.zeros(shape=(len(dataset),1))
+    numClasses = len(dataset)
+    D = dataset[0][0].shape[1]
+    base = 1 / ((2 * math.pi * (h ** 2)) ** (D / 2))
+    N = len(dataset[0])
+
+    elements = x - np.array(dataset)
+    ## l2 norm
+    exponents = -1 * np.sum(np.abs(elements)**2, axis=2) / ((2 * h) ** 2)
+    probs = np.sum(base * np.exp(exponents), axis=1) / N
+
+    classPrediction = classes[np.argmax(probs)]
+    return classPrediction
 
 # note, this implementation returns value @ class index, not class index
 def kerndensitymodel(dataset, classes, h, x):
@@ -152,10 +168,42 @@ def main():
     x = np.delete(training_data, -1, axis=1)[i]
     sortclassdata, classes = class_sorted_data(training_data)
     kerndensitymodel(sortclassdata, classes, h, x)
-    kerndensitymodel_vector(sortclassdata, classes, h, x)
+    kerndensitymodel_vector_time_measurement(x, sortclassdata, classes, h)
+
+def x_vector_test():
+    training_data = load_csv(TrainingFilename)
+    testing_data = load_csv(TestingFilename)
+    sortclassdata, classes = class_sorted_data(training_data)
+    X = np.delete(training_data, -1, axis=1)
+    
+    start = timer()
+
+    res = np.apply_along_axis(kerndensitymodel_vector, 1, X, sortclassdata, classes, h)
+
+    end = timer()
+    print(end - start) # Time in seconds
+
+    print(res)
+
+def x_forloop_test():
+    training_data = load_csv(TrainingFilename)
+    testing_data = load_csv(TestingFilename)
+    sortclassdata, classes = class_sorted_data(training_data)
+    res = []
+    
+    start = timer()
+
+    for i in range(training_data.shape[0]):
+        res.append(kerndensitymodel_vector(np.delete(training_data, -1, axis=1)[i], sortclassdata, classes, h))
+
+    end = timer()
+    print(end - start) # Time in seconds
+
+    print(res)
 
 if __name__ == '__main__':
-    main()
+    x_vector_test()
+    x_forloop_test()
 
 
 # The following is used to plot the class boundaries
